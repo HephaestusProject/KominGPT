@@ -117,3 +117,4 @@ events.out.tfevents.*
 
 # torch_lightening stuff
 lightning_logs/
+.cache_model/
