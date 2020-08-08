@@ -114,3 +114,6 @@ venv.bak/
 
 # Tensorboard
 events.out.tfevents.*
+
+# torch_lightening stuff
+lightning_logs/
