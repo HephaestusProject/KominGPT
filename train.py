@@ -2,19 +2,19 @@
     This script was made by Nick at 19/07/20.
     To implement code for training your model.
 """
-import torch
-
-import json
 import argparse
-from attrdict import AttrDict
+import json
+
 import pytorch_lightning as pl
+import torch
+from attrdict import AttrDict
 
 from src.model.net import DCNNClassifier
 
 
 def main():
     cli_parser = argparse.ArgumentParser()
-    cli_parser.add_argument('-c', '--config_file', type=str, required=True)
+    cli_parser.add_argument("-c", "--config_file", type=str, required=True)
     cli_args = cli_parser.parse_args()
 
     hparams = AttrDict(json.load(open(cli_args.config_file)))
@@ -29,5 +29,5 @@ def main():
     trainer.fit(model)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

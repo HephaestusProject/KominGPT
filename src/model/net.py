@@ -5,16 +5,14 @@
 
 import json
 
+import pytorch_lightning as pl
 import torch
+from pytorch_lightning.metrics.functional import accuracy
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
-import pytorch_lightning as pl
-from pytorch_lightning.metrics.functional import accuracy
-
-from ..data import (TextClassificationDataset,
-                    TextClassificationCollate)
+from ..data import TextClassificationCollate, TextClassificationDataset
 
 
 class DCNNClassifier(pl.LightningModule):
@@ -26,28 +24,40 @@ class DCNNClassifier(pl.LightningModule):
         self._build_loss()
 
     def _build_model(self):
-        self.embeddings = nn.Embedding(self.hparams.num_embeddings, self.hparams.word_embedding_dim)
+        self.embeddings = nn.Embedding(
+            self.hparams.num_embeddings, self.hparams.word_embedding_dim
+        )
 
         self.convolutions = nn.ModuleList()
 
         self.convolutions.append(
             nn.Sequential(
-                nn.Conv1d(self.hparams.word_embedding_dim, self.hparams.hidden_dim,
-                          kernel_size=self.hparams.kernel_size, stride=1,
-                          padding=int((self.hparams.kernel_size - 1) / 2)),
+                nn.Conv1d(
+                    self.hparams.word_embedding_dim,
+                    self.hparams.hidden_dim,
+                    kernel_size=self.hparams.kernel_size,
+                    stride=1,
+                    padding=int((self.hparams.kernel_size - 1) / 2),
+                ),
                 nn.ReLU(),
-                nn.BatchNorm1d(self.hparams.hidden_dim)
-            ))
+                nn.BatchNorm1d(self.hparams.hidden_dim),
+            )
+        )
 
         for _ in range(1, self.hparams.n_convolutions - 1):
             self.convolutions.append(
                 nn.Sequential(
-                    nn.Conv1d(self.hparams.hidden_dim, self.hparams.hidden_dim,
-                              kernel_size=self.hparams.kernel_size, stride=1,
-                              padding=int((self.hparams.kernel_size - 1) / 2)),
+                    nn.Conv1d(
+                        self.hparams.hidden_dim,
+                        self.hparams.hidden_dim,
+                        kernel_size=self.hparams.kernel_size,
+                        stride=1,
+                        padding=int((self.hparams.kernel_size - 1) / 2),
+                    ),
                     nn.ReLU(),
-                    nn.BatchNorm1d(self.hparams.hidden_dim)
-                ))
+                    nn.BatchNorm1d(self.hparams.hidden_dim),
+                )
+            )
 
         self.linear = nn.Linear(self.hparams.hidden_dim, self.hparams.hidden_dim)
         self.logit = nn.Linear(self.hparams.hidden_dim, self.hparams.classes)
@@ -76,30 +86,36 @@ class DCNNClassifier(pl.LightningModule):
     def train_dataloader(self):
         train_dataset = json.load(open(self.hparams.train_path))
 
-        return DataLoader(TextClassificationDataset(train_dataset, self.hparams),
-                          batch_size=self.hparams.batch_size,
-                          collate_fn=TextClassificationCollate(self.hparams),
-                          drop_last=True)
+        return DataLoader(
+            TextClassificationDataset(train_dataset, self.hparams),
+            batch_size=self.hparams.batch_size,
+            collate_fn=TextClassificationCollate(self.hparams),
+            drop_last=True,
+        )
 
     def val_dataloader(self):
-        if not self.hparams.val_path == '':
+        if not self.hparams.val_path == "":
             val_dataset = json.load(open(self.hparams.val_path))
 
-            return DataLoader(TextClassificationDataset(val_dataset, self.hparams),
-                              batch_size=self.hparams.batch_size,
-                              collate_fn=TextClassificationCollate(self.hparams),
-                              drop_last=False)
+            return DataLoader(
+                TextClassificationDataset(val_dataset, self.hparams),
+                batch_size=self.hparams.batch_size,
+                collate_fn=TextClassificationCollate(self.hparams),
+                drop_last=False,
+            )
         else:
             raise NotImplementedError()
 
     def test_dataloader(self):
-        if not self.hparams.test_path == '':
+        if not self.hparams.test_path == "":
             test_dataset = json.load(open(self.hparams.test_path))
 
-            return DataLoader(TextClassificationDataset(test_dataset, self.hparams),
-                              batch_size=self.hparams.batch_size,
-                              collate_fn=TextClassificationCollate(self.hparams),
-                              drop_last=False)
+            return DataLoader(
+                TextClassificationDataset(test_dataset, self.hparams),
+                batch_size=self.hparams.batch_size,
+                collate_fn=TextClassificationCollate(self.hparams),
+                drop_last=False,
+            )
         else:
             raise NotImplementedError()
 
@@ -107,32 +123,32 @@ class DCNNClassifier(pl.LightningModule):
         x, m, y = batch
         y_hat = self(x)
         loss = self.loss(y_hat, y)
-        tensorboard_logs = {'train_loss': loss}
+        tensorboard_logs = {"train_loss": loss}
 
-        return {'loss': loss, 'log': tensorboard_logs}
+        return {"loss": loss, "log": tensorboard_logs}
 
     def validation_step(self, batch, batch_idx):
         x, m, y = batch
         y_hat = self(x)
         preds = torch.argmax(y_hat, dim=-1).detach().cpu()
 
-        return {'val_loss': self.loss(y_hat, y), 'val_acc': accuracy(preds, y)}
+        return {"val_loss": self.loss(y_hat, y), "val_acc": accuracy(preds, y)}
 
     def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        avg_acc = torch.stack([x['val_acc'] for x in outputs]).mean()
-        tensorboard_logs = {'val_loss': avg_loss, 'val_acc': avg_acc}
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+        avg_acc = torch.stack([x["val_acc"] for x in outputs]).mean()
+        tensorboard_logs = {"val_loss": avg_loss, "val_acc": avg_acc}
 
-        return {'val_loss': avg_loss, 'val_acc': avg_acc, 'log': tensorboard_logs}
+        return {"val_loss": avg_loss, "val_acc": avg_acc, "log": tensorboard_logs}
 
     def test_step(self, batch, batch_nb):
         x, m, y = batch
         y_hat = self(x)
 
-        return {'test_loss': self.loss(y_hat, y)}
+        return {"test_loss": self.loss(y_hat, y)}
 
     def test_epoch_end(self, outputs):
-        avg_loss = torch.stack([x['test_loss'] for x in outputs]).mean()
-        logs = {'test_loss': avg_loss}
+        avg_loss = torch.stack([x["test_loss"] for x in outputs]).mean()
+        logs = {"test_loss": avg_loss}
 
-        return {'test_loss': avg_loss, 'log': logs, 'progress_bar': logs}
+        return {"test_loss": avg_loss, "log": logs, "progress_bar": logs}
