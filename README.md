@@ -5,7 +5,7 @@
 
 ## Abstract
 
-This is Korean min GPT and here's original GPT's abstract below.
+This is Korean min GPT(Komin GPT) and here's original GPT's abstract below.
 
 Natural language understanding comprises a wide range of diverse tasks such
 as textual entailment, question answering, semantic similarity assessment, and
